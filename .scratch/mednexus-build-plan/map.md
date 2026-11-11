@@ -21,6 +21,9 @@ A locked architecture for MedNexus (Rust API service + Python AI service + plain
 
 <!-- one line per closed ticket -->
 
+- [Rust crate stack for a beginner](issues/01-rust-crate-stack.md): axum + tokio, sqlx (MySQL), argon2, reqwest, tracing, thiserror; auth leans toward tower-sessions (for 07)
+- [Python AI stack and Python 3.14 compatibility](issues/02-python-ai-stack.md): stay on 3.14; fastembed (ONNX), Qdrant sparse+dense with RRF fusion, FastAPI, pypdf, venv+pip
+
 ## Not yet specified
 
 - **Chunking strategy:** fixed-size vs section-aware (PLAN.md §12). Depends on the corpus and the PDF extraction choice; the MVP probably uses fixed-size, with section-aware as a possible later step.
