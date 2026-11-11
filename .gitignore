@@ -1,0 +1,21 @@
+# Rust
+backend/target/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local data / models / secrets
+data/
+*.env
+.env*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
