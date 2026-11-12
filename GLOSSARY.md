@@ -2,6 +2,24 @@
 
 A local evidence assistant that retrieves, cites and summarizes medical literature to support (never replace) clinical judgment.
 
+## People and accountability
+
+**User**:
+A person with an account who asks questions, uploads PDFs, and owns their own search history.
+_Avoid_: Account (for the person), member, client
+
+**Admin**:
+A user who also curates the knowledge base (PubMed import, document deletion), manages other users' roles, and reads the audit log.
+_Avoid_: Superuser, moderator, curator
+
+**Search history**:
+A user's own record of the questions they asked; visible only to that user.
+_Avoid_: Query log, activity log
+
+**Audit log**:
+An append-only record of security- and knowledge-base-relevant events (who did what, when), kept for accountability; it records that a question was asked but not its text.
+_Avoid_: Search history, log (alone), event log
+
 ## Knowledge and ingest
 
 **Knowledge base**:

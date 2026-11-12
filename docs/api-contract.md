@@ -267,9 +267,12 @@ panel. The abstention threshold lives in Python; Rust only reads `abstained`.
 
 ---
 
+## Settled elsewhere
+
+- **No owner filter** on `/search` / `/answer`: uploads go into one shared knowledge base (Auth design, #14; ADR 0003).
+
 ## Still open (tracked on the map, not here)
 
-- Whether `/search` / `/answer` filter by owner for **private uploads**
 - Exact chunk size and section-aware chunking
 - How the **evaluation harness** calls `/search` and `/answer` (directly or through Rust)
 - Streaming answers (SSE) as a later UX improvement
