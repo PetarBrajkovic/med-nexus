@@ -26,6 +26,11 @@ them drift.
   row (`status = pending`) **before** asking Python to index it, so Qdrant never
   holds vectors that no MySQL row knows about.
 - **JSON** everywhere except `/pdf/extract` (multipart). Field names are `snake_case`.
+- **The evaluation harness is the one other caller.** `eval/` calls `/search` and
+  `/answer` directly on `127.0.0.1`, using the optional evaluation-only fields below,
+  which Rust never sends. To map result UUIDs to PMIDs it reads the `documents` table
+  as a **read-only** MySQL user; it never writes. Decided in
+  [Evaluation harness design](https://github.com/PetarBrajkovic/med-nexus/issues/17).
 
 ## Timeouts (set on Rust's HTTP client, per call)
 
@@ -158,14 +163,16 @@ so indexing the same `document_id` twice never duplicates chunks.
 
 Each chunk's Qdrant payload holds `document_id`, `chunk_index`, the **verbatim chunk
 text** (what the evidence panel quotes), and `page`/`section` when known. Titles,
-PMIDs and so on are **not** copied in; Rust looks them up in MySQL.
+PMIDs and so on are **not** copied into the payload; Rust looks them up in MySQL.
+The **title is part of the indexed text**, though: for PubMed imports Rust sends
+title + abstract as the text, so titles are searchable.
 
 ```json
 {
   "documents": [
     {
       "document_id": "6f1c2a9e-3b7d-4c55-9a51-2f0d8e7b1c44",
-      "pages": [ { "page": null, "section": "Abstract", "text": "Programmed cell death (PCD) is ..." } ]
+      "pages": [ { "page": null, "section": "Abstract", "text": "Do mitochondria play a role in remodelling lace plant leaves during programmed cell death?\n\nProgrammed cell death (PCD) is ..." } ]
     }
   ]
 }
@@ -211,6 +218,12 @@ internally and directly by the evaluation (Recall@k, MRR).
 ```json
 { "query": "Does metformin reduce macrosomia in gestational diabetes?", "top_k": 8 }
 ```
+Evaluation-only optional fields (ablations), defaulting to the production setup:
+```json
+{ "query": "...", "top_k": 50, "retrieval": "dense", "rerank": false }
+```
+`retrieval` is `"dense"`, `"sparse"` or `"hybrid"` (default); `rerank` defaults to `true`.
+The reranker's candidate pool is never smaller than `top_k`.
 ```json
 {
   "chunks": [
@@ -230,7 +243,9 @@ internally and directly by the evaluation (Recall@k, MRR).
 
 Search, check abstention, then one LLM call. Rust calls only this endpoint for users.
 `use_retrieval: false` skips retrieval entirely; it exists for the no-RAG baseline in
-the evaluation.
+the evaluation. `decision: true` (evaluation-only, default `false`) adds one
+instruction to the same prompt and returns a PubMedQA-style `"decision": "yes" | "no" | "maybe"`
+field (`null` when abstained).
 
 ```json
 { "question": "Does metformin reduce macrosomia in gestational diabetes?", "top_k": 8, "use_retrieval": true }
@@ -274,5 +289,4 @@ panel. The abstention threshold lives in Python; Rust only reads `abstained`.
 ## Still open (tracked on the map, not here)
 
 - Exact chunk size and section-aware chunking
-- How the **evaluation harness** calls `/search` and `/answer` (directly or through Rust)
 - Streaming answers (SSE) as a later UX improvement
