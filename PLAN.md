@@ -14,7 +14,10 @@ silently drifting.
   Rust takes the API service's role, and Python FastAPI keeps the AI work. Both
   services are hand-coded (no AI codegen) and reviewed task by task. See
   `docs/adr/0001-rust-api-python-ai-hand-coded.md`.
-- **Frontend: React → plain HTML/CSS/JS.** Kept thin, for demonstration only.
+- **Frontend: React → plain HTML/CSS/JS → TypeScript (no framework).** Kept thin,
+  for demonstration only. Compiled with plain `tsc` (no bundler) into
+  `frontend/dist`, which Rust serves. Decided in
+  [MVP slice and backlog order](https://github.com/PetarBrajkovic/med-nexus/issues/16).
 - **Docker Compose deferred.** MySQL, Qdrant and Ollama run natively on Windows
   during development. Compose is an optional last step.
 
@@ -151,7 +154,7 @@ tooling is Python-first. They talk over REST.
 
 | Layer | Choice |
 |---|---|
-| Frontend | Plain HTML/CSS/JS (no framework) |
+| Frontend | TypeScript + HTML/CSS (no framework; plain `tsc`, no bundler) |
 | Backend | **Rust** (crate stack: see the wayfinder map) |
 | Relational DB | MySQL |
 | AI service | Python + FastAPI |

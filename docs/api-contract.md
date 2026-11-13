@@ -14,7 +14,7 @@ them drift.
 
 - **Who talks to whom.** Browser → Rust only. Rust → Python only. Python is never
   called by the browser, so it needs no CORS and no auth.
-- **Rust serves the frontend.** The static files in `frontend/` are served by Rust
+- **Rust serves the frontend.** The compiled frontend in `frontend/dist/` is served by Rust
   on the same host and port as `/api`. Same origin means no CORS anywhere.
 - **Python binds `127.0.0.1`.** No auth between services (single machine). If it were
   ever deployed on a network, a shared-secret header would be the next step.
