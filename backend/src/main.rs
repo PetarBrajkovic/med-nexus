@@ -1,12 +1,12 @@
 use dotenvy::dotenv;
 use std::{
     collections::HashMap,
-    env::{self},
+    env,
     net::{AddrParseError, SocketAddr},
 };
 
-#[derive(Debug)]
 #[allow(dead_code)]
+#[derive(Debug)]
 // used later when we input the server and DB
 struct Config {
     database_url: String,
@@ -17,16 +17,16 @@ struct Config {
 #[derive(Debug)]
 enum ConfigError {
     Missing { key: String },
-    Invalid { reason: String, key: String },
+    Invalid { key: String, reason: String },
 }
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ConfigError::Missing { key } => {
-                write!(f, "Missing {key} from the environment variables")
+                write!(f, "Missing or empty {key} from the environment variables")
             }
-            ConfigError::Invalid { reason, key } => {
+            ConfigError::Invalid { key, reason } => {
                 write!(f, "The {key} is invalid due to: {reason}")
             }
         }
@@ -45,7 +45,7 @@ fn main() {
         }
     };
 
-    print!("Config is {config:?}");
+    println!("Config is {config:?}");
 }
 
 fn load_config(map: &HashMap<String, String>) -> Result<Config, ConfigError> {
@@ -69,9 +69,12 @@ fn load_config(map: &HashMap<String, String>) -> Result<Config, ConfigError> {
 }
 
 fn read_env(vars: &HashMap<String, String>, key: &str) -> Result<String, ConfigError> {
-    vars.get(key).cloned().ok_or_else(|| ConfigError::Missing {
-        key: String::from(key),
-    })
+    vars.get(key)
+        .filter(|value| !value.trim().is_empty())
+        .cloned()
+        .ok_or_else(|| ConfigError::Missing {
+            key: String::from(key),
+        })
 }
 
 #[cfg(test)]
@@ -89,7 +92,7 @@ mod tests {
     #[test]
     fn fails_when_one_missing() {
         let mut vars = fill_map();
-        vars.remove(&String::from("PYTHON_URL"));
+        vars.remove("PYTHON_URL");
 
         let result = load_config(&vars);
         assert!(matches!(result, Err(ConfigError::Missing { key }) if key == "PYTHON_URL"));
@@ -104,10 +107,22 @@ mod tests {
         assert!(matches!(result, Err(ConfigError::Invalid { key, .. }) if key == "BIND_ADDR"));
     }
 
+    #[test]
+    fn fails_when_one_is_empty() {
+        let mut vars = fill_map();
+        vars.insert(String::from("PYTHON_URL"), String::from("  "));
+
+        let result = load_config(&vars);
+        assert!(matches!(result, Err(ConfigError::Missing { key, .. }) if key == "PYTHON_URL"));
+    }
+
     fn fill_map() -> HashMap<String, String> {
         let mut vars = HashMap::new();
         vars.insert("DATABASE_URL".to_string(), "postgres://x".to_string());
-        vars.insert("PYTHON_URL".to_string(), "postgres://x".to_string());
+        vars.insert(
+            "PYTHON_URL".to_string(),
+            "http://127.0.0.1:8000".to_string(),
+        );
         vars.insert("BIND_ADDR".to_string(), "127.0.0.1:3000".to_string());
         vars
     }
