@@ -1,3 +1,4 @@
+use axum::{Json, Router, routing::get};
 use dotenvy::dotenv;
 use std::{
     collections::HashMap,
@@ -7,11 +8,16 @@ use std::{
 
 #[allow(dead_code)]
 #[derive(Debug)]
-// used later when we input the server and DB
+// used later when we input the DB and Python server
 struct Config {
     database_url: String,
     python_url: String,
     bind_address: SocketAddr,
+}
+
+#[derive(serde::Serialize)]
+struct HealthResponse {
+    status: &'static str,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -22,12 +28,23 @@ enum ConfigError {
     Invalid { key: String, reason: String },
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     dotenv().ok();
-
     let vars: HashMap<String, String> = env::vars().collect();
-    let _config = load_config(&vars)?;
+    let config = load_config(&vars)?;
+
+    let app = Router::new().route("/api/health", get(health));
+
+    let listener = tokio::net::TcpListener::bind(config.bind_address).await?;
+    println!("listening on: {}", listener.local_addr()?);
+    axum::serve(listener, app).await?;
     Ok(())
+}
+
+async fn health() -> Json<HealthResponse> {
+    let response = HealthResponse { status: "ok" };
+    Json(response)
 }
 
 fn load_config(map: &HashMap<String, String>) -> Result<Config, ConfigError> {
