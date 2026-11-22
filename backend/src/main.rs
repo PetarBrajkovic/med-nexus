@@ -14,38 +14,20 @@ struct Config {
     bind_address: SocketAddr,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 enum ConfigError {
+    #[error("missing or empty {key} from the environment variables")]
     Missing { key: String },
+    #[error("the {key} is invalid due to: {reason}")]
     Invalid { key: String, reason: String },
 }
 
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ConfigError::Missing { key } => {
-                write!(f, "Missing or empty {key} from the environment variables")
-            }
-            ConfigError::Invalid { key, reason } => {
-                write!(f, "The {key} is invalid due to: {reason}")
-            }
-        }
-    }
-}
-
-fn main() {
+fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     let vars: HashMap<String, String> = env::vars().collect();
-    let config = match load_config(&vars) {
-        Ok(value) => value,
-        Err(error) => {
-            eprintln!("Error: {error}");
-            std::process::exit(1)
-        }
-    };
-
-    println!("Config is {config:?}");
+    let _config = load_config(&vars)?;
+    Ok(())
 }
 
 fn load_config(map: &HashMap<String, String>) -> Result<Config, ConfigError> {
@@ -86,7 +68,7 @@ mod tests {
         let vars = fill_map();
 
         let config_param = load_config(&vars).unwrap();
-        assert_eq!(config_param.database_url, "postgres://x");
+        assert_eq!(config_param.database_url, "mysql://x");
     }
 
     #[test]
@@ -118,7 +100,7 @@ mod tests {
 
     fn fill_map() -> HashMap<String, String> {
         let mut vars = HashMap::new();
-        vars.insert("DATABASE_URL".to_string(), "postgres://x".to_string());
+        vars.insert("DATABASE_URL".to_string(), "mysql://x".to_string());
         vars.insert(
             "PYTHON_URL".to_string(),
             "http://127.0.0.1:8000".to_string(),
