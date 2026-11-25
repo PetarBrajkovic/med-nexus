@@ -5,6 +5,9 @@ use std::{
     env,
     net::{AddrParseError, SocketAddr},
 };
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tracing::{Level, info};
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -31,18 +34,30 @@ enum ConfigError {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
+
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
     let vars: HashMap<String, String> = env::vars().collect();
     let config = load_config(&vars)?;
 
     let listener = tokio::net::TcpListener::bind(config.bind_address).await?;
-    println!("listening on: {}", listener.local_addr()?);
+    info!("listening on: {}", listener.local_addr()?);
 
     axum::serve(listener, app()).await?;
     Ok(())
 }
 
 fn app() -> Router {
-    Router::new().route("/api/health", get(health))
+    let trace_layer = TraceLayer::new_for_http()
+        .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+        .on_response(DefaultOnResponse::new().level(Level::INFO));
+
+    Router::new()
+        .route("/api/health", get(health))
+        .layer(trace_layer)
 }
 
 async fn health() -> Json<HealthResponse> {
