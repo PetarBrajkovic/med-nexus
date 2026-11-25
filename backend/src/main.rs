@@ -34,12 +34,15 @@ async fn main() -> anyhow::Result<()> {
     let vars: HashMap<String, String> = env::vars().collect();
     let config = load_config(&vars)?;
 
-    let app = Router::new().route("/api/health", get(health));
-
     let listener = tokio::net::TcpListener::bind(config.bind_address).await?;
     println!("listening on: {}", listener.local_addr()?);
-    axum::serve(listener, app).await?;
+
+    axum::serve(listener, app()).await?;
     Ok(())
+}
+
+fn app() -> Router {
+    Router::new().route("/api/health", get(health))
 }
 
 async fn health() -> Json<HealthResponse> {
@@ -79,6 +82,8 @@ fn read_env(vars: &HashMap<String, String>, key: &str) -> Result<String, ConfigE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{body::Body, body::to_bytes, http::Request, http::StatusCode};
+    use tower::ServiceExt;
 
     #[test]
     fn loads_when_all_present() {
@@ -124,5 +129,31 @@ mod tests {
         );
         vars.insert("BIND_ADDR".to_string(), "127.0.0.1:3000".to_string());
         vars
+    }
+
+    #[tokio::test]
+    async fn router_path_not_found() {
+        let req = Request::builder()
+            .method("GET")
+            .uri("/nesto_tamo/ne_postoji")
+            .body(Body::empty())
+            .unwrap();
+
+        let res = app().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn health_returns_ok() {
+        let req = Request::builder()
+            .method("GET")
+            .uri("/api/health")
+            .body(Body::empty())
+            .unwrap();
+
+        let res = app().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(body, r#"{"status":"ok"}"#);
     }
 }
